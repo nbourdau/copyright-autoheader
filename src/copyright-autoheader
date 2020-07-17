@@ -36,7 +36,11 @@ from typing import List, Dict
 import yaml
 
 
-def multiline_expand(re_obj, line: str, content: List[str]) -> List[str]:
+COPYRIGHT_TOKEN = b'<copyrights>'
+
+
+def multiline_expand(pattern: bytes, line: bytes,
+                     content: List[bytes]) -> List[bytes]:
     """
     replace the pattern in one line with content made of multiple lines. Each
     line replacing the pattern will conserve the prolog and epilog of the line.
@@ -53,9 +57,13 @@ def multiline_expand(re_obj, line: str, content: List[str]) -> List[str]:
         - ' prolog Hello World!   epilog'
         - ' prolog How are you?   epilog'
     """
+    start = line.find(pattern)
+    prolog = line[:start]
+    epilog = line[start+len(pattern):]
+
     lines = list()
     for cline in content:
-        lines.append(re_obj.sub(cline, line))
+        lines.append(prolog + cline + epilog)
     return lines
 
 
@@ -127,7 +135,7 @@ class Header:
     Data representing a token that can be substituted in a source file
     """
     def __init__(self, token: str, content: str):
-        self.regex = re.compile(bytes(token, 'utf-8'))
+        self.pattern = bytes(token, 'utf-8')
         self.lines = bytes(content.strip(), 'utf-8').split(b'\n')
 
     def subst(self, line: bytes):
@@ -135,13 +143,13 @@ class Header:
         Expand a line containing the header token with the content of the
         header
         """
-        return multiline_expand(self.regex, line, self.lines)
+        return multiline_expand(self.pattern, line, self.lines)
 
     def match(self, line: bytes) -> bool:
         """
         Test if a line contains the token
         """
-        return self.regex.search(line) is not None
+        return line.find(self.pattern) != -1
 
 
 class HeaderFormatter:
@@ -151,7 +159,6 @@ class HeaderFormatter:
     def __init__(self):
         self.hdrs = dict()
         self.owner_remap_list = []
-        self.copyright_re = re.compile(b'<copyrights>')
         self.destdir = getenv('MESON_DIST_ROOT', '')
 
         try:
@@ -204,8 +211,8 @@ class HeaderFormatter:
 
         out_lines = list()
         for line in lines:
-            if self.copyright_re.search(line) is not None:
-                res = multiline_expand(self.copyright_re, line, copyrights)
+            if line.find(COPYRIGHT_TOKEN) != -1:
+                res = multiline_expand(COPYRIGHT_TOKEN, line, copyrights)
                 out_lines.extend(res)
                 continue
             else:
@@ -254,7 +261,8 @@ def main():
     proc = Popen(['git', 'ls-files'], stdout=PIPE, universal_newlines=True)
     for entry in proc.stdout:
         tracked_file = entry.strip()
-        if not islink(tracked_file) and isfile(tracked_file):
+        if not islink(tracked_file) and isfile(tracked_file) \
+           and tracked_file != 'autoheader.yml':
             formatter.format(tracked_file.strip())
     proc.wait()
 
