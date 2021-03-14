@@ -23,3 +23,5 @@ foreach p : python3_required_modules
         error('Required Python3 module \'' + p + '\' not found')
     endif
 endforeach
+
+meson.add_dist_script('src/copyright-autoheader')
