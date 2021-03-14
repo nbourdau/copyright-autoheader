@@ -24,4 +24,14 @@ foreach p : python3_required_modules
     endif
 endforeach
 
+rst2man = find_program(['rst2man', 'rst2man3'], required : true)
+custom_target('manpage',
+    output : 'copyright-autoheader.1',
+    input : 'doc/copyright-autoheader.rst',
+    command : [rst2man, '@INPUT@', '@OUTPUT@'],
+    build_by_default : true,
+    install : true,
+    install_dir : get_option('mandir') / 'man1',
+)
+
 meson.add_dist_script('src/copyright-autoheader')
