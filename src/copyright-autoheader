@@ -27,7 +27,8 @@ The 'owner_remap' entry:
 """
 
 import re
-from os import replace, popen, chdir, getenv
+import sys
+from os import replace, popen, chdir, getenv, environ
 from os.path import islink, isfile, join
 from shutil import copymode
 from subprocess import PIPE, Popen
@@ -251,8 +252,12 @@ def main():
     Program entry point
     """
     # Determine the root dir of the git project
-    prj_topdir = popen('git rev-parse --show-toplevel').read().strip()
+    prj_topdir = environ.get('GIT_WORK_TREE')
     if not prj_topdir:
+        prj_topdir = popen('git rev-parse --show-toplevel').read().strip()
+
+    if not prj_topdir:
+        print('Could not locate project dir', file=sys.stderr)
         exit(1)
 
     chdir(prj_topdir)
