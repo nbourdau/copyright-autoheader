@@ -29,10 +29,10 @@ The 'owner_remap' entry:
 import re
 import sys
 from dataclasses import dataclass
-from os import replace, popen, chdir, getenv, environ
+from os import replace, chdir, getenv, environ
 from os.path import islink, isfile, join
 from shutil import copymode
-from subprocess import PIPE, Popen
+from subprocess import PIPE, CalledProcessError, Popen, check_output
 from time import gmtime
 
 from typing import List, Dict
@@ -269,11 +269,12 @@ def main():
     # Determine the root dir of the git project
     prj_topdir = environ.get('GIT_WORK_TREE')
     if not prj_topdir:
-        prj_topdir = popen('git rev-parse --show-toplevel').read().strip()
-
-    if not prj_topdir:
-        print('Could not locate project dir', file=sys.stderr)
-        exit(1)
+        try:
+            cmd = ['git', 'rev-parse', '--show-toplevel']
+            prj_topdir = check_output(cmd, text=True).strip()
+        except CalledProcessError:
+            print('Could not locate project dir', file=sys.stderr)
+            exit(1)
 
     chdir(prj_topdir)
     formatter = HeaderFormatter()
