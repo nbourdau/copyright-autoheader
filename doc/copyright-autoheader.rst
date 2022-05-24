@@ -121,11 +121,12 @@ If done manually, this is very tedious and it is more information to check
 during review of each commit.
 
 One can use its IDE to update, but configuration can be very tricky and IDE
-dependent. Hence one cannot assume that this is done properly by each contributor.
+dependent. Hence one cannot assume that this is done properly by each
+contributor.
 
 No matter the way it is updated (with the help of a tool or manually), doing
-copyright/authorship update at each commit generates conflicts unecesarily when
-you merge or rebase those commits.
+copyright/authorship update at each commit generates conflicts unnecessarily
+when you merge or rebase those commits.
 
 
 Why expanding a token and not prepending directly the copyright header?
@@ -142,7 +143,7 @@ treated differently than the others... If all files are written without header,
 you will quickly forget that you cannot change the copyright, that you also
 have restrictions about some possible license change.
 
-But there is another practital reason justifying the token expansion. Imagine
+But there is another practical reason justifying the token expansion. Imagine
 you have a project, just for example, that mixes C and python code, and meson,
 and Makefile, and julia, and rust, and bash, vim scripts, and scripts with
 shebang or even worse windows cmd batch file... How do you generate properly
