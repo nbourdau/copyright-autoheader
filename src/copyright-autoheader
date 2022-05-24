@@ -28,10 +28,12 @@ The 'owner_remap' entry:
 
 import re
 import sys
+from dataclasses import dataclass
 from os import replace, popen, chdir, getenv, environ
 from os.path import islink, isfile, join
 from shutil import copymode
 from subprocess import PIPE, Popen
+from time import gmtime
 
 from typing import List, Dict
 import yaml
@@ -122,6 +124,13 @@ class CopyrightOwner:
         return self.firstyear > other.firstyear
 
 
+@dataclass
+class Commit:
+    name: str = ''
+    email: str = ''
+    year: int = 9999
+
+
 def get_copyrights_from_owners(owners: Dict[str, CopyrightOwner]) -> List[str]:
     """
     Get list of copyright lines representing the owners of a file
@@ -191,19 +200,25 @@ class HeaderFormatter:
         """
         Get the copyright owner data from a file tracked in git
         """
-        cmd = ['git', 'log', '--date=format:%Y', '--format=%ae|%ad|%an',
-               '--', filename]
-        proc = Popen(cmd, stdout=PIPE, universal_newlines=True)
+        owners = {}
 
-        owners = dict()
-        for entry in proc.stdout:
-            email, year, name = entry.strip().split('|')
-            key, name = self._remap_owner(email, name)
-            owner = owners.get(key, CopyrightOwner(name))
-            owner.add(int(year))
-            owners[key] = owner
+        cmd = ['git', 'blame', '-w', '-C', '-C', '-C20',
+               '--incremental', filename]
+        with Popen(cmd, stdout=PIPE, text=True) as proc:
+            commit = Commit()
+            for line in proc.stdout:
+                key, *values = line.split(maxsplit=1)
+                if key == 'author':
+                    commit.name = values[0].strip()
+                elif key == 'author-mail':
+                    commit.email = values[0].strip('<> \n')
+                elif key == 'author-time':
+                    commit.year = gmtime(int(values[0].strip())).tm_year
+                elif key == 'filename':
+                    key, name = self._remap_owner(commit.email, commit.name)
+                    owner = owners.setdefault(key, CopyrightOwner(name))
+                    owner.add(commit.year)
 
-        proc.wait()
         return owners
 
     def _format_copyrights(self, filename, lines: List[bytes]) -> List[bytes]:
