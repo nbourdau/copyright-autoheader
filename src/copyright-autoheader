@@ -34,8 +34,8 @@ from os.path import islink, isfile, join
 from shutil import copymode
 from subprocess import PIPE, CalledProcessError, Popen, check_output
 from time import gmtime
+from typing import List
 
-from typing import List, Dict
 import yaml
 
 
@@ -131,15 +131,6 @@ class Commit:
     year: int = 9999
 
 
-def get_copyrights_from_owners(owners: Dict[str, CopyrightOwner]) -> List[str]:
-    """
-    Get list of copyright lines representing the owners of a file
-    """
-    owner_list = list(owners.values())
-    owner_list.sort()
-    return [owner.gen_copyright() for owner in owner_list]
-
-
 class Header:
     """
     Data representing a token that can be substituted in a source file
@@ -196,12 +187,14 @@ class HeaderFormatter:
                 return [remap_name, remap_name]
         return [email, name]
 
-    def get_copyright_owners(self, filename: str) -> Dict[str, CopyrightOwner]:
+    def copyrights(self, filename: str) -> List[str]:
         """
-        Get the copyright owner data from a file tracked in git
+        Get the list of copyright statement of the filename sorted by first
+        year of contribution.
         """
         owners = {}
 
+        # Gather copyright owners (along with year of contribution)
         cmd = ['git', 'blame', '-w', '-C', '-C', '-C20',
                '--incremental', filename]
         with Popen(cmd, stdout=PIPE, text=True) as proc:
@@ -219,16 +212,15 @@ class HeaderFormatter:
                     owner = owners.setdefault(key, CopyrightOwner(name))
                     owner.add(commit.year)
 
-        return owners
+        # Generate the list of copyrights statement from copyright owners
+        return [owner.gen_copyright() for owner in sorted(owners.values())]
 
     def _format_copyrights(self, filename, lines: List[bytes]) -> List[bytes]:
-        owners = self.get_copyright_owners(filename)
-        copyrights = get_copyrights_from_owners(owners)
-
         out_lines = list()
         for line in lines:
             if line.find(COPYRIGHT_TOKEN) != -1:
-                res = multiline_expand(COPYRIGHT_TOKEN, line, copyrights)
+                res = multiline_expand(COPYRIGHT_TOKEN, line,
+                                       self.copyrights(filename))
                 out_lines.extend(res)
                 continue
             else:
