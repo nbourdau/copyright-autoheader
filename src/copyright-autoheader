@@ -234,22 +234,19 @@ class HeaderFormatter:
         """
         outname = join(self.destdir, filename)
         tmpoutname = outname + '.licfmt'
-        filein = open(filename, 'rb')
-        fileout = open(tmpoutname, 'wb')
 
-        for line in filein:
-            lines = [line]
-            for hdr in self.hdrs.values():
-                if hdr.match(line):
-                    lines = hdr.subst(line)
-                    lines = self._format_copyrights(filename, lines)
-                    break
+        with open(filename, 'rb') as filein, open(tmpoutname, 'wb') as fileout:
+            for line in filein:
+                lines = [line]
+                for hdr in self.hdrs.values():
+                    if hdr.match(line):
+                        lines = hdr.subst(line)
+                        lines = self._format_copyrights(filename, lines)
+                        break
 
-            for outline in lines:
-                fileout.write(outline)
+                for outline in lines:
+                    fileout.write(outline)
 
-        filein.close()
-        fileout.close()
         copymode(filename, tmpoutname)
         replace(tmpoutname, outname)
 
