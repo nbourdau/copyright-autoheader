@@ -29,6 +29,7 @@ The 'owner_remap' entry:
 import re
 import sys
 from dataclasses import dataclass
+from filecmp import cmp
 from os import replace, chdir, getenv, environ
 from os.path import islink, isfile, join
 from shutil import copymode
@@ -248,7 +249,14 @@ class HeaderFormatter:
                     fileout.write(outline)
 
         copymode(filename, tmpoutname)
-        replace(tmpoutname, outname)
+        try:
+            replace(tmpoutname, outname)
+        except PermissionError:
+            # On windows, replacing can fail if the file is being used. If the
+            # header expansion results in the same file, this is harmless and
+            # can be ignored.
+            if not cmp(tmpoutname, outname, shallow=False):
+                raise
 
 
 def main():
